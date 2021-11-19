@@ -6,6 +6,7 @@
  */
 package org.hibernate.hql.spi.id;
 
+import org.hibernate.boot.TempTableDdlTransactionHandling;
 import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.boot.spi.SessionFactoryOptions;
 import org.hibernate.engine.jdbc.connections.spi.JdbcConnectionAccess;
@@ -14,6 +15,7 @@ import org.hibernate.engine.spi.QueryParameters;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.hql.internal.ast.HqlSqlWalker;
+import org.hibernate.hql.spi.id.local.AfterUseAction;
 import org.hibernate.persister.entity.Queryable;
 
 /**
@@ -85,4 +87,16 @@ public interface MultiTableBulkIdStrategy {
 	 * @return The handler
 	 */
 	DeleteHandler buildDeleteHandler(SessionFactoryImplementor factory, HqlSqlWalker walker);
+
+	default IdTableSupport getIdTableSupport() {
+		return  null;
+	}
+
+	default TempTableDdlTransactionHandling getDdlTransactionHandling() {
+		return TempTableDdlTransactionHandling.NONE;
+	}
+
+	default AfterUseAction getAfterUseAction() {
+		return AfterUseAction.NONE;
+	}
 }

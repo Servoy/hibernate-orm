@@ -210,4 +210,9 @@ public class GlobalTemporaryTableBulkIdStrategy
 			}
 		};
 	}
+
+	@Override
+	public AfterUseAction getAfterUseAction() {
+		return afterUseAction;
+	}
 }

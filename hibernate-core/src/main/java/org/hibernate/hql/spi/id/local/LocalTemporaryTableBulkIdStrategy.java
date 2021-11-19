@@ -105,6 +105,14 @@ public class LocalTemporaryTableBulkIdStrategy
 				: null;
 	}
 
+	public TempTableDdlTransactionHandling getDdlTransactionHandling() {
+		return ddlTransactionHandling;
+	}
+
+	public AfterUseAction getAfterUseAction() {
+		return afterUseAction;
+	}
+
 	@Override
 	protected IdTableInfoImpl buildIdTableInfo(
 			PersistentClass entityBinding,

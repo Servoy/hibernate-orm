@@ -30,6 +30,7 @@ import org.hibernate.hql.spi.id.IdTableHelper;
 import org.hibernate.hql.spi.id.IdTableSupport;
 import org.hibernate.hql.spi.id.IdTableSupportStandardImpl;
 import org.hibernate.hql.spi.id.MultiTableBulkIdStrategy;
+import org.hibernate.hql.spi.id.local.AfterUseAction;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
@@ -190,5 +191,10 @@ public class PersistentTableBulkIdStrategy
 		}
 
 		IdTableHelper.INSTANCE.executeIdTableDropStatements( dropTableStatements, jdbcServices, connectionAccess );
+	}
+
+	@Override
+	public AfterUseAction getAfterUseAction() {
+		return AfterUseAction.CLEAN;
 	}
 }
