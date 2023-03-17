@@ -42,6 +42,7 @@ import javax.persistence.criteria.CriteriaBuilder;
 
 import org.hibernate.CacheMode;
 import org.hibernate.Criteria;
+import org.hibernate.FetchNotFoundException;
 import org.hibernate.Filter;
 import org.hibernate.FlushMode;
 import org.hibernate.HibernateException;
@@ -273,12 +274,7 @@ public class SessionImpl
 						() -> getSessionProperty( AvailableSettings.FLUSH_MODE ),
 						() -> {
 							final Object oldSetting = getSessionProperty( org.hibernate.jpa.AvailableSettings.FLUSH_MODE );
-							if ( oldSetting != null ) {
-								DeprecationLogger.DEPRECATION_LOGGER.deprecatedSetting(
-										org.hibernate.jpa.AvailableSettings.FLUSH_MODE,
-										AvailableSettings.FLUSH_MODE
-								);
-							}
+							//Not invoking the DeprecationLogger in this case as the user can't avoid using this property (the string value is the same)
 							return oldSetting;
 						}
 				);
@@ -298,20 +294,6 @@ public class SessionImpl
 
 	protected ActionQueue createActionQueue() {
 		return new ActionQueue( this );
-	}
-
-	/**
-	 * Override the implementation provided on SharedSessionContractImplementor
-	 * which is not very efficient: this method is hot in Hibernate Reactive, and could
-	 * be hot in some ORM contexts as well.
-	 * @return
-	 */
-	@Override
-	public Integer getConfiguredJdbcBatchSize() {
-		final Integer sessionJdbcBatchSize = getJdbcBatchSize();
-		return sessionJdbcBatchSize == null ?
-				fastSessionServices.defaultJdbcBatchSize :
-				sessionJdbcBatchSize;
 	}
 
 	private LockOptions getLockOptionsForRead() {
@@ -1056,7 +1038,16 @@ public class SessionImpl
 		LoadEvent event = loadEvent;
 		loadEvent = null;
 		event = recycleEventInstance( event, id, entityName );
-		fireLoadNoChecks( event, LoadEventListener.IMMEDIATE_LOAD );
+
+		try {
+			fireLoadNoChecks( event, LoadEventListener.IMMEDIATE_LOAD );
+		}
+		catch (FetchNotFoundException e) {
+			// when this happens at the "top-level" of a load, for 5.x we want to
+			// keep this the same user-facing exception as it was before
+			getSessionFactory().getEntityNotFoundDelegate().handleEntityNotFound( e.getEntityName(), (Serializable) e.getIdentifier() );
+		}
+
 		Object result = event.getResult();
 		if ( loadEvent == null ) {
 			event.setEntityClassName( null );
@@ -2261,6 +2252,19 @@ public class SessionImpl
 				"object references an unsaved transient instance - save the transient instance before flushing: " +
 						guessEntityName( object )
 		);
+	}
+
+	@Override @SuppressWarnings("unchecked")
+	public <T> T getReference(T object) {
+		checkOpen();
+		if ( object instanceof HibernateProxy ) {
+			LazyInitializer initializer = ( (HibernateProxy) object ).getHibernateLazyInitializer();
+			return (T) getReference( initializer.getPersistentClass(), initializer.getIdentifier() );
+		}
+		else {
+			EntityPersister persister = getEntityPersister( null, object );
+			return (T) getReference( persister.getMappedClass(), persister.getIdentifier(object, this) );
+		}
 	}
 
 	@Override

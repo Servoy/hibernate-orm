@@ -36,7 +36,7 @@ import org.hibernate.boot.spi.ClassLoaderAccess;
  * @author Emmanuel Bernard
  */
 @SuppressWarnings("unchecked")
-public final class JPAXMLOverriddenMetadataProvider implements MetadataProvider {
+public class JPAXMLOverriddenMetadataProvider implements MetadataProvider {
 
 	private static final MetadataProvider STATELESS_BASE_DELEGATE = new JavaMetadataProvider();
 
@@ -94,7 +94,7 @@ public final class JPAXMLOverriddenMetadataProvider implements MetadataProvider 
 		else {
 			if ( defaults == null ) {
 				defaults = new HashMap<>();
-				XMLContext.Default xmlDefaults = xmlContext.getDefault( null );
+				XMLContext.Default xmlDefaults = xmlContext.getDefaultWithGlobalCatalogAndSchema();
 
 				defaults.put( "schema", xmlDefaults.getSchema() );
 				defaults.put( "catalog", xmlDefaults.getCatalog() );

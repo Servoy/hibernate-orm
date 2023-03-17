@@ -11,13 +11,16 @@ import java.sql.SQLException;
 
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.model.relational.Database;
+import org.hibernate.boot.model.relational.SqlStringGenerationContext;
+import org.hibernate.boot.model.relational.internal.SqlStringGenerationContextImpl;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.cfg.Environment;
+import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.H2Dialect;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator;
-import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.resource.transaction.spi.DdlTransactionIsolator;
 import org.hibernate.tool.schema.extract.internal.DatabaseInformationImpl;
@@ -25,11 +28,11 @@ import org.hibernate.tool.schema.extract.internal.ExtractionContextImpl;
 import org.hibernate.tool.schema.extract.internal.InformationExtractorJdbcDatabaseMetaDataImpl;
 import org.hibernate.tool.schema.extract.spi.DatabaseInformation;
 import org.hibernate.tool.schema.extract.spi.ExtractionContext;
-import org.hibernate.tool.schema.internal.exec.ImprovedExtractionContextImpl;
 import org.hibernate.tool.schema.internal.exec.JdbcContext;
 import org.hibernate.tool.schema.spi.SchemaManagementTool;
 
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Test;
 
 import org.hibernate.testing.TestForIssue;
@@ -88,6 +91,9 @@ public class TestExtraPhysicalTableTypes {
 	@Test
 	public void testExtraPhysicalTableTypesPropertyEmptyStringValue() throws Exception {
 		buildMetadata( "  " );
+		Dialect dialect = metadata.getDatabase().getDialect();
+		// As of 2.0.202 H2 reports tables as BASE TABLE so we add the type through the dialect
+		Assume.assumeFalse( dialect instanceof H2Dialect && ( (H2Dialect) dialect ).isVersion2() );
 		DdlTransactionIsolator ddlTransactionIsolator = buildDdlTransactionIsolator();
 		try {
 			InformationExtractorJdbcDatabaseMetaDataImplTest informationExtractor = buildInformationExtractorJdbcDatabaseMetaDataImplTest(
@@ -102,8 +108,11 @@ public class TestExtraPhysicalTableTypes {
 	}
 
 	@Test
-	public void testNoExtraPhysicalTabeTypesProperty() throws Exception {
+	public void testNoExtraPhysicalTableTypesProperty() throws Exception {
 		buildMetadata( null );
+		Dialect dialect = metadata.getDatabase().getDialect();
+		// As of 2.0.202 H2 reports tables as BASE TABLE so we add the type through the dialect
+		Assume.assumeFalse( dialect instanceof H2Dialect && ( (H2Dialect) dialect ).isVersion2() );
 		DdlTransactionIsolator ddlTransactionIsolator = buildDdlTransactionIsolator();
 		try {
 			InformationExtractorJdbcDatabaseMetaDataImplTest informationExtractor = buildInformationExtractorJdbcDatabaseMetaDataImplTest(
@@ -121,21 +130,23 @@ public class TestExtraPhysicalTableTypes {
 			throws SQLException {
 		Database database = metadata.getDatabase();
 
+		SqlStringGenerationContext sqlStringGenerationContext =
+				SqlStringGenerationContextImpl.forTests( database.getJdbcEnvironment() );
+
 		DatabaseInformation dbInfo = new DatabaseInformationImpl(
 				ssr,
 				database.getJdbcEnvironment(),
+				sqlStringGenerationContext,
 				ddlTransactionIsolator,
-				database.getDefaultNamespace().getName(),
 				database.getServiceRegistry().getService( SchemaManagementTool.class )
 		);
 
 		ExtractionContextImpl extractionContext = new ExtractionContextImpl(
 				ssr,
 				database.getJdbcEnvironment(),
+				sqlStringGenerationContext,
 				ssr.getService( JdbcServices.class ).getBootstrapJdbcConnectionAccess(),
-				(ExtractionContext.DatabaseObjectAccess) dbInfo,
-				database.getDefaultNamespace().getPhysicalName().getCatalog(),
-				database.getDefaultNamespace().getPhysicalName().getSchema()
+				(ExtractionContext.DatabaseObjectAccess) dbInfo
 
 		);
 		return new InformationExtractorJdbcDatabaseMetaDataImplTest(

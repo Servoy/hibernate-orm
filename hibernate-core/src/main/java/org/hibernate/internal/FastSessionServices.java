@@ -60,6 +60,7 @@ import org.hibernate.event.spi.RefreshEventListener;
 import org.hibernate.event.spi.ReplicateEventListener;
 import org.hibernate.event.spi.ResolveNaturalIdEventListener;
 import org.hibernate.event.spi.SaveOrUpdateEventListener;
+import org.hibernate.hql.spi.QueryTranslatorFactory;
 import org.hibernate.internal.log.DeprecationLogger;
 import org.hibernate.internal.util.NullnessHelper;
 import org.hibernate.jpa.QueryHints;
@@ -163,10 +164,13 @@ public final class FastSessionServices {
 	final int defaultJdbcBatchSize;
 
 	//Private fields:
-	private final Dialect dialect;
 	private final CacheStoreMode defaultCacheStoreMode;
 	private final CacheRetrieveMode defaultCacheRetrieveMode;
 	private final ConnectionObserverStatsBridge defaultJdbcObservers;
+
+	//Public fields:
+	public final Dialect dialect;
+	public final QueryTranslatorFactory queryTranslatorFactory;
 
 	FastSessionServices(SessionFactoryImpl sf) {
 		Objects.requireNonNull( sf );
@@ -226,6 +230,7 @@ public final class FastSessionServices {
 		this.classLoaderService = sr.getService( ClassLoaderService.class );
 		this.transactionCoordinatorBuilder = sr.getService( TransactionCoordinatorBuilder.class );
 		this.jdbcServices = sr.getService( JdbcServices.class );
+		this.queryTranslatorFactory = sr.getService( QueryTranslatorFactory.class );
 
 		this.isJtaTransactionAccessible = isTransactionAccessible( sf, transactionCoordinatorBuilder );
 
@@ -246,12 +251,7 @@ public final class FastSessionServices {
 				() -> defaultSessionProperties.get( AvailableSettings.FLUSH_MODE ),
 				() -> {
 					final Object oldSetting = defaultSessionProperties.get( org.hibernate.jpa.AvailableSettings.FLUSH_MODE );
-					if ( oldSetting != null ) {
-						DeprecationLogger.DEPRECATION_LOGGER.deprecatedSetting(
-								org.hibernate.jpa.AvailableSettings.FLUSH_MODE,
-								AvailableSettings.FLUSH_MODE
-						);
-					}
+					//Not invoking the DeprecationLogger in this case as the user can't avoid using this property (the string value is the same)
 					return oldSetting;
 				}
 		);
